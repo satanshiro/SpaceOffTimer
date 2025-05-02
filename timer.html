@@ -1704,10 +1704,16 @@
         rejectMethod();
         resetTimer();
       }
-      // audioEl.muted = true;
-      // audioEl.play();
-      // audioEl.pause();
-      // await startTimer(headsupDuration);
+      // Pre-load and prepare audio when timer starts
+      audioEl.currentTime = 0;
+      audioEl.muted = true;
+      audioEl.loop = true;
+      try {
+        await audioEl.play();
+      } catch (error) {
+        console.error('Error preparing audio:', error);
+      }
+      
       timerCircle.classList.add("bg-animated");
       timerCircle.classList.add(durationToBackground[selectedDuration]);
       timerCircle.classList.add("animate-" + selectedDuration + "s");
@@ -1725,9 +1731,26 @@
     }
 
     async function playSoundAndFlicker() {
+      // Ensure audio is ready to play
       audioEl.currentTime = 0;
       audioEl.muted = false;
-      audioEl.play();
+      
+      // Try to play immediately after timer ends
+      try {
+        await audioEl.play();
+      } catch (error) {
+        console.error('Error playing audio:', error);
+        // If initial play fails, try one more time after a short delay
+        setTimeout(async () => {
+          try {
+            audioEl.currentTime = 0;
+            await audioEl.play();
+          } catch (retryError) {
+            console.error('Error playing audio on retry:', retryError);
+          }
+        }, 10);
+      }
+
       const flickerClass = `animate-flicker-${selectedDuration}s`;
       timerCircle.classList.add(flickerClass);
       timerCircle.classList.remove("bg-position");
@@ -1751,6 +1774,7 @@
         timerCircle.classList.add(durationToBackground[selectedDuration]);
         timer.classList.remove("animate-text-flicker");
         audioEl.pause();
+        audioEl.loop = false;
         audioEl.currentTime = 0;
       }
     }
